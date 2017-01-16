@@ -8,8 +8,8 @@
 // @require https://unpkg.com/react@15/dist/react.js
 // @require https://unpkg.com/react-dom@15/dist/react-dom.js
 // @require https://unpkg.com/babel-standalone@6/babel.min.js
-// @resource layoutCss https://gist.githubusercontent.com/p6vital/4ec0414834bc0fd43b1140cb4c1a8570/raw
-// @resource reactJsx https://gist.githubusercontent.com/p6vital/8ca3fb3c2b22ddb757e53bde334e7917/raw
+// @resource layoutCss https://raw.githubusercontent.com/p6vital/douban-sofa-machine/master/tampermonkey/debug-nav.css
+// @resource reactJsx https://raw.githubusercontent.com/p6vital/douban-sofa-machine/master/tampermonkey/debug-nav.jsx
 // @grant GM_addStyle
 // @grant GM_getResourceText
 // ==/UserScript==
