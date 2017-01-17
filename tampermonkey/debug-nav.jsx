@@ -12,35 +12,39 @@ class InputField extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
-      value: props.value
+      value: props.value,
     };
   }
 
   onChange(event) {
-    this.setState({value: event.target.value});
+    this.setState({
+      value: event.target.value,
+      dirty: true,
+    });
   }
 
   render() {
     var valid = true;
-
-    if (typeof this.props.validate === 'function') {
-      valid = this.props.validate(this.state.value);
-    }
-
-    var invalidMessage = null;
-    if(!valid) {
-      invalidMessage = <div className='db-invalid-msg'>{this.props.invalidMessage}</div>;
+    var invalidMessageDom;
+    
+    if (this.state.dirty && typeof this.props.validate === 'function') {
+      var invalidMessage = this.props.validate(this.state.value);
+      if (invalidMessage) {
+        invalidMessageDom = <div className='db-input-invalid-msg'>{invalidMessage}</div>;
+      }
     }
 
     return (
-      <div className={!valid ? 'db-invalid' : ''}>
-        <div>
+      <div className={'db-input' + (!valid ? ' db-input-invalid' : '')}>
+        <div className='db-input-label'>
           {this.props.label}
         </div>
-        <div>
-          {this.props.renderInputField(this.state.value, this.onChange.bind(this))}
+        <div className='db-input-field'>
+          <div>
+            {this.props.renderInputField(this.state.value, this.onChange.bind(this))}
+          </div>
+          {invalidMessageDom}
         </div>
-        {invalidMessage}
       </div>
     );
   }
@@ -68,12 +72,16 @@ class HelloMessage extends React.Component {
         <DebugTitle/>
         <div>Hello {this.props.name}</div>
         <TextInput 
-          label='Test Input'
-          value=''
-          invalidMessage='Invalid test input'
+          label='Refresh Rate (sec)'
+          value='10'
           validate={(value) => {
-            console.log('Validating input test value: ' + value);
-            return value;
+            if (isNaN(value) || (parseInt(value, 10) != value)) {
+              return 'Not a integer';
+            }
+
+            if (value <= 0) {
+              return 'Not a positive integer'
+            }
           }}
         />
       </div>
