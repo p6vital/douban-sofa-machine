@@ -12,20 +12,20 @@ class InputField extends React.Component {
   render() {
     var valid = true;
 
-    if (typeof props.validate === 'function') {
-      props.validate(this.state.input);
+    if (typeof this.props.validate === 'function') {
+      this.props.validate(this.state.input);
     }
 
     return (
       <div className="{!valid ? 'db-invalid' : ''}">
         <div>
-          {props.label}
+          {this.props.label}
         </div>
         <div>
-          {props.inputField}
+          {this.props.inputField}
         </div>
         <div>
-          {props.invalidMessage}
+          {this.props.invalidMessage}
         </div>
       </div>
     );
