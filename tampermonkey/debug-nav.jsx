@@ -9,30 +9,6 @@ class DebugTitle extends React.Component {
 }
 
 class InputField extends React.Component {
-  render() {
-    var valid = true;
-
-    if (typeof this.props.validate === 'function') {
-      this.props.validate(this.props.value);
-    }
-
-    return (
-      <div className="{!valid ? 'db-invalid' : ''}">
-        <div>
-          {this.props.label}
-        </div>
-        <div>
-          {this.props.inputField}
-        </div>
-        <div>
-          {this.props.invalidMessage}
-        </div>
-      </div>
-    );
-  }
-}
-
-class TextInput extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
@@ -40,16 +16,47 @@ class TextInput extends React.Component {
     };
   }
 
+  onChange(event) {
+    this.setState({value: event.target.value});
+  }
+
+  render() {
+    var valid = true;
+
+    if (typeof this.props.validate === 'function') {
+      valid = this.props.validate(this.state.value);
+    }
+
+    var invalidMessage = null;
+    if(!valid) {
+      invalidMessage = <div className='db-invalid-msg'>{this.props.invalidMessage}</div>;
+    }
+
+    return (
+      <div className={!valid ? 'db-invalid' : ''}>
+        <div>
+          {this.props.label}
+        </div>
+        <div>
+          {this.props.renderInputField(this.state.value, this.onChange.bind(this))}
+        </div>
+        {invalidMessage}
+      </div>
+    );
+  }
+}
+
+class TextInput extends React.Component {
   render() {
     return (
       <InputField 
         label={this.props.label}
+        value={this.props.value}
+        invalidMessage={this.props.invalidMessage}
         validate={this.props.validate}
-        invalidMessage='Not a valid input'
-        inputFiled={
-          <input type='text' value={this.state.value}/>
-        } 
-        value={this.state.value}/>
+        renderInputField={(value, onChange) => {
+          return <input type='text' value={value} onChange={onChange}/>;
+        }} />
       );
     }
   }
@@ -61,9 +68,11 @@ class HelloMessage extends React.Component {
         <DebugTitle/>
         <div>Hello {this.props.name}</div>
         <TextInput 
-          value=''
           label='Test Input'
+          value=''
+          invalidMessage='Invalid test input'
           validate={(value) => {
+            console.log('Validating input test value: ' + value);
             return value;
           }}
         />
