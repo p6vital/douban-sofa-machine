@@ -3,3 +3,12 @@
   background-color: #e5ebe4; 
   color: #037b82; width: 100%;
 }
+
+.db-input-label {
+  display: inline-block;
+  margin-right: 5px;
+}
+
+.db-input-field {
+  display: inline-block;
+}
