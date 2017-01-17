@@ -6,9 +6,16 @@
 
 .db-input-label {
   display: inline-block;
+  vertical-align: top;
   margin-right: 5px;
+  margin-top: 2px;
 }
 
 .db-input-field {
   display: inline-block;
+  vertical-align: top;
+}
+
+.db-input-invalid-msg {
+  color: #fab0b6;
 }
