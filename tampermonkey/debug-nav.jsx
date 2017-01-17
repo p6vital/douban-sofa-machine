@@ -13,7 +13,7 @@ class InputField extends React.Component {
     var valid = true;
 
     if (typeof this.props.validate === 'function') {
-      this.props.validate(this.state.value);
+      this.props.validate(this.props.value);
     }
 
     return (
