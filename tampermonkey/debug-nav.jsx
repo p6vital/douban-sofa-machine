@@ -13,7 +13,7 @@ class InputField extends React.Component {
     var valid = true;
 
     if (typeof this.props.validate === 'function') {
-      this.props.validate(this.state.input);
+      this.props.validate(this.state.value);
     }
 
     return (
@@ -45,9 +45,11 @@ class TextInput extends React.Component {
       <InputField 
         label={this.props.label}
         validate={this.props.validate}
+        invalidMessage='Not a valid input'
         inputFiled={
           <input type='text' value={this.state.value}/>
-        } />
+        } 
+        value={this.state.value}/>
       );
     }
   }
