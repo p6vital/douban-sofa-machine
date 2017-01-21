@@ -1,12 +1,27 @@
-class DebugTitle extends React.Component {
+class InputFieldDisplay extends React.Component {
   render() {
+    var invalidMessageDom;
+    if (this.props.invalidMessage) {
+      invalidMessageDom = <div className='db-input-invalid-msg'><span className="label label-danger">{this.props.invalidMessage}</span></div>;
+    }
+
+    var labelDom;
+    if (typeof this.props.label !== 'undefined') {
+      labelDom = <div className="db-input-label" style={{display:'inline-block', width:'100px'}}>{this.props.label}</div>
+    }
+    
     return (
-      <div>
-        <span>Debug Mode: {DoubanUtils.debugMode}</span>
+      <div className={'db-input' + (this.props.invalidMessage ? ' db-input-invalid' : '')} style={{marginBottom:'5px'}}>
+        {labelDom}
+        <div style={{display:'inline-block'}}>
+          {this.props.renderInputField(this.props.displayValue, this.props.onChange)}
+          {invalidMessageDom}
+        </div>
       </div>
     );
   }
 }
+
 
 class InputField extends React.Component {
   constructor(props) {
@@ -18,13 +33,12 @@ class InputField extends React.Component {
     };
   }
 
-  onChange(event) {
-    var newValue = event.target.value;
-    console.log('New Value: ' + newValue);
+  onChange(newValue) {
+    console.log('InputField:' + this.props.inputKey + ': Changing value to ' + newValue);
     var invalidMessage = this.props.validate(newValue);
     
     if (typeof this.props.onChange === 'function') {
-      this.props.onChange(newValue, this.state.value, this.props.label, invalidMessage);
+      this.props.onChange(newValue, this.state.value, this.props.inputKey, invalidMessage);
     } 
     
     if (!invalidMessage) {
@@ -42,32 +56,14 @@ class InputField extends React.Component {
   }
 
   render() {
-    var invalidMessageDom;
-    
-    var invalidMessage = this.state.invalidMessage || this.props.invalidMessage;
-    if (invalidMessage) {
-      invalidMessageDom = <div className='db-input-invalid-msg'><span className="label label-danger">{invalidMessage}</span></div>;
-    }
-
-    if (!this.props.hideLabel && this.props.label) {
-      return (
-        <div className={'db-input' + (!this.state.valid ? ' db-input-invalid' : '')}>
-          <div className="input-group input-group-sm">
-            <span className="input-group-addon">{this.props.label}</span>
-            {this.props.renderInputField(this.state.displayValue, this.onChange.bind(this))}
-          </div>
-          {invalidMessageDom}
-        </div>
-      );
-    }
-
     return (
-      <div className={'db-input' + (!this.state.valid ? ' db-input-invalid' : '')}>
-        <div>
-          {this.props.renderInputField(this.state.displayValue, this.onChange.bind(this))}
-        </div>
-      {invalidMessageDom}
-      </div>
+      <InputFieldDisplay
+        label={this.props.label}
+        renderInputField={this.props.renderInputField}
+        invalidMessage={this.state.invalidMessage}
+        displayValue={this.state.displayValue}
+        onChange={this.onChange.bind(this)}
+      />
     );
   }
 }
@@ -78,68 +74,153 @@ class ListInputField extends React.Component {
     super(props);
     this.state = {
       value: props.value || [],
-      displayValue: props.displayValue || props.value,
+      displayValue: props.displayValue || props.value.slice(),
       invalidMessage: props.invalidMessage,
       childInvalidMessages: [],
+      keys: (function() {
+        var keys=[];
+        for(var i=0; i<props.value.length;i++){
+          keys.push(i);
+        }
+        return keys;
+      })(),
     };
+  }
+
+  validate(childInvalidMessages){
+    var invalid = false;
+    var invalidCount = 0;
+    for (var i=0; i<childInvalidMessages.length; i++) {
+      if (childInvalidMessages[i]) {
+        invalid = true;
+        invalidCount++;
+      }
+    }
+    
+    return invalid ? invalidCount + ' field(s) have invalid value(s).' : null;
   }
   
   onChange(value, oldValue, index, childInvalidMessage) {
-    var values = this.state.value;
+    var values = this.state.value.slice();
+    var displayValues = this.state.displayValue.slice();
     var childInvalidMessages = this.state.childInvalidMessages;
     
     values[index] = value;
-    childInvalidMessages[index] = childInvalidMessage;
+    displayValues[index] = value;
+    console.log('ListInputField:' + this.props.inputKey + ': Changing value to ' + displayValues);
     
-    var invalidMessage = childInvalidMessage ? 'Some values are not valid.' : null;
+    childInvalidMessages[index] = childInvalidMessage;
+
+    var invalidMessage = this.validate(childInvalidMessages);
 
     if (typeof this.props.onChange === 'function') {
-      this.props.onChange(values, this.state.value, this.props.label, invalidMessage);
+      this.props.onChange(displayValues, this.state.value, this.props.inputKey, invalidMessage);
     } 
 
     if (!invalidMessage) {
       this.setState({
-        value: values,
-        displayValue: values,
-         v: [],
+        value: values.slice(),
+        displayValue: displayValues.slice(),
         invalidMessage: null,
+        childInvalidMessages:[],
       });
     } else {
       this.setState({
-        displayValue: values,
+        displayValue: displayValues.slice(),
         invalidMessage: invalidMessage,
         childInvalidMessages: childInvalidMessages,
       });
     }
   }
 
+  remove(index) {
+    console.log('ListInputField:' + this.props.inputKey + ': Deleting item at index ' + index);
+    var value = this.state.value;
+    var displayValue = this.state.displayValue;
+    var childInvalidMessages = this.state.childInvalidMessages;
+    var keys = this.state.keys;
+    
+    value.splice(index, 1);
+    displayValue.splice(index, 1);
+    childInvalidMessages.splice(index, 1);
+    keys.splice(index, 1);
+    
+    var invalidMessage = this.validate(childInvalidMessages);
+
+    if (typeof this.props.onChange === 'function') {
+      this.props.onChange(value, this.state.value, this.props.inputKey, invalidMessage);
+    } 
+
+    this.setState({
+      value: value,
+      displayValue: displayValue,
+      invalidMessage: invalidMessage,
+      childInvalidMessages: childInvalidMessages,
+      keys: keys,
+    });
+  }
+
+  add(){
+    console.log('ListInputField:' + this.props.inputKey + ': Adding new item..');
+    var value = this.state.value;
+    var displayValue = this.state.displayValue;
+    var childInvalidMessages = this.state.childInvalidMessages;
+    var keys = this.state.keys;
+    var size = keys.length;
+    
+    value[size] = this.props.defaultValue;
+    displayValue[size] = this.props.defaultValue;
+    keys[size] = keys[size-1] + 1;
+    
+    var invalidMessage = this.state.invalidMessage;
+
+    if (typeof this.props.onChange === 'function') {
+      this.props.onChange(value, this.state.value, this.props.inputKey, invalidMessage);
+    } 
+
+    this.setState({
+      value: value,
+      displayValue: displayValue,
+      invalidMessage: invalidMessage,
+      childInvalidMessages: childInvalidMessages,
+      keys: keys,
+    });
+  }
+
   render() {
     return (
-      <InputField 
+      <InputFieldDisplay 
         label={this.props.label}
-        displayValue={this.state.displayValue}
         invalidMessage={this.state.invalidMessage}
+        displayValue={this.state.displayValue}
         renderInputField={(value) => {
           var doms = [];
           for(var i=0; i<value.length; i++) {
             doms.push(
-              <div key={i}>
-                <InputField key={'input-field'}
-                  label={i}
-                  hideLabel={true}
-                  value={value[i]}
-                  invalidMessage={this.state.childInvalidMessages[i]}
-                  validate={this.props.validate}
-                  onChange={(value, oldValue, index, childInvalidMessage) => {this.onChange(value, oldValue, index, childInvalidMessage);}}
-                  renderInputField={this.props.renderInputField}
-                />
-                <div key={'delete'}>
-                  Delete
+              <div key={this.state.keys[i]} style={{clear:'right'}}>
+                <div key={'delete'} style={{float:'right', marginLeft: '5px'}}>
+                  <a href="#" onClick={function(index){
+                    return function() {
+                      this.remove(index);
+                    }.bind(this);
+                  }.bind(this)(i)}>Delete</a>
+                </div>
+                <div style={{float:'right'}}>
+                  <InputField 
+                    key={'input-field'}
+                    inputKey={i}
+                    value={value[i]}
+                    validate={this.props.validate}
+                    onChange={(value, oldValue, index, childInvalidMessage) => {this.onChange(value, oldValue, index, childInvalidMessage);}}
+                    renderInputField={this.props.renderInputField}
+                  />
                 </div>
               </div>
             );
           }
-          doms.push(<div key={'add'}>Add</div>)
+          doms.push(<div key={'add'}>
+            <a href="#" onClick={this.add.bind(this)}>Add</a>
+          </div>)
 
           return doms;
         }}
@@ -155,9 +236,14 @@ class TextInput extends React.Component {
         label={this.props.label}
         value={this.props.value}
         validate={this.props.validate}
-        onChange={this.props.onChange}
+        onChange={(value, oldValue, inputKey, invalidMessage) => {
+            if (typeof this.props.onChange === 'function') {
+              this.props.onChange(value, oldValue, inputKey, invalidMessage);
+            } 
+          }
+        }
         renderInputField={(value, onChange) => {
-          return <input type='text' className='form-control' value={value} onChange={onChange}/>;
+          return <input type='text' className='form-control' value={value} onChange={(event) => {onChange(event.target.value);}}/>;
         }}
       />
     );
@@ -166,15 +252,10 @@ class TextInput extends React.Component {
 
 class DebugArgs extends React.Component {
   render() {
-    var doms = [];
-    for (var key in this.props.debugArgs) {
-      doms.push(<div key={key}>{key}: {this.props.debugArgs[key]}</div>);
-    }
-    
     return (
-      <div>
-        <div>Debug Args:</div>
-        {doms}
+      <div style={{clear:'left'}}>
+        <div style={{float:'left',width:'100px'}}>Debug Args</div>
+        <div><pre>{JSON.stringify(this.props.debugArgs,null,2)}</pre></div>
       </div>
     )
   }
@@ -191,59 +272,167 @@ class DebugAssets extends React.Component {
   }
 }
 
-class DebugNav extends React.Component {
+class DebugTitle extends React.Component {
+  render() {
+    return (
+      <div>
+        <span>Debug Mode: {DoubanUtils.debugMode}</span>
+      </div>
+    );
+  }
+}
+
+class DebugControl extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
-      refreshRate: 10
+      status: 'stopped'
     };
   }
 
+  render() {
+    
+    var buttonDom = this.state.status === 'stopped' ? (
+      <input id="db-start-button" type="button" className="btn btn-default" value="Start"
+        onClick={()=>{
+          if (typeof this.props.onStart === 'function') {
+            this.props.onStart();
+          }
+          this.setState({
+            status: 'started',
+          });
+        }}
+      />
+    ) : (
+      <input id="db-start-button" type="button" className="btn btn-default" value="Stop"
+        onClick={()=>{
+          if (typeof this.props.onStop === 'function') {
+            this.props.onStop();
+          }
+          this.setState({
+            status: 'stopped',
+          });
+        }}
+      />
+    );
+    
+    return (
+      <div>
+        {buttonDom}
+      </div>
+    )
+  }
+}
+
+class DebugNav extends React.Component {
+  constructor(props) {
+    super(props);
+    
+    var debugArgs
+    try {
+      var jsonStr = localStorage.getItem('douban-debug');
+      if (jsonStr) {
+        debugArgs = JSON.parse(jsonStr);
+      }
+    } catch(e) {
+      console.log('Error getting data from local storage.');
+    }
+
+    if (!debugArgs || typeof debugArgs !== 'object') {
+      debugArgs = {};
+    }
+    
+    debugArgs.refreshRate = debugArgs.refreshRate || 10;
+    if (!debugArgs.comments || Array !== debugArgs.comments.constructor) {
+      debugArgs.comments = [
+        'Test comment #1',
+        'Test comment #2',
+        'Test comment #3',
+        'Test comment #4',
+        'Test comment #5',
+      ];
+    }
+
+    this.state = debugArgs;
+  }
+
   setDebugArgs(key, value) {
-    var newState = {};
+    var newState = this.state;
     newState[key] = value;
     this.setState(newState);
+    localStorage.setItem('douban-debug', JSON.stringify(newState));
   }
 
   render() {
     return (
-      <div>
-        <DebugAssets/>
-        <DebugTitle/>
-        <TextInput 
-          label='Refresh Rate (sec)'
-          value={this.state.refreshRate}
-          validate={(value) => {
-            if (isNaN(value) || (parseInt(value, 10) != value)) {
-              return 'Not an integer';
-            }
-
-            if (value <= 0) {
-              return 'Not a positive integer'
-            }
-          }}
-          onChange={(value) => {this.setDebugArgs('refreshRate', parseInt(value, 10));}}
-        />
-
-        <ListInputField 
-          label="Test List Input"
-          value={[1,2,3]}
-          renderInputField={(value, onChange) => {
-            return <input type='text' className='form-control' value={value} onChange={onChange}/>;
-          }}
-          validate={(value) => {
-            if (isNaN(value) || (parseInt(value, 10) != value)) {
-              return 'Not an integer';
-            }
-
-            if (value <= 0) {
-              return 'Not a positive integer'
-            }
-          }}
-          onChange={(value) => {console.log('changed to: ' + value);}}
-        />
+      <div className="panel panel-primary" style={{minWidth:'950px'}}>
+        <div className="panel-heading">
+          <DebugAssets/>
+          <DebugTitle/>
+        </div>
+        <div className="panel-body">
+          <div style={{clear:'right'}}>
+            <div style={{float: 'right',width:'360px'}}>
+              <DebugArgs debugArgs={this.state} />
+            </div>
+            <div>
+              <div style={{display:'inline-block'}}>
+                <TextInput 
+                  label='Refresh Rate (sec)'
+                  inputKey="refreshRate"
+                  value={this.state.refreshRate}
+                  validate={(value) => {
+                    if (isNaN(value) || (parseInt(value, 10) != value)) {
+                      return 'Not an integer';
+                    }
         
-        <DebugArgs debugArgs={this.state} />
+                    if (value <= 0) {
+                      return 'Not a positive integer'
+                    }
+                  }}
+                  onChange={(value, oldValue, inputKey, invalidMessage) => {
+                    this.setDebugArgs('refreshRate', parseInt(value, 10));
+                  }}
+                />
+        
+                <ListInputField 
+                  label="Comment List"
+                  inputKey="comments"
+                  value={this.state.comments}
+                  defaultValue={'New comment'}
+                  renderInputField={(value, onChange) => {
+                    return (
+                      <input 
+                        type="text" 
+                        className="form-control" 
+                        value={value} 
+                        onChange={(event) => {onChange(event.target.value);}}
+                      />
+                    );
+                  }}
+                  validate={(value) => {
+                    if (value.replace(/\s/g,'') === '') {
+                      return 'Comment cannot be blank';
+                    }
+        
+                    if (value.length > 70) {
+                      return 'Comment cannot exceed 70 characters';
+                    }
+                  }}
+                  onChange={(value, oldValue, inputKey, invalidMessage) => {
+                    this.setDebugArgs('comments', value);
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+          <DebugControl
+            onStart={() => {DoubanSofaUtils.startSofa();}}
+            onStop={() => {DoubanSofaUtils.stopSofa();}}
+          />
+          <div id="debug-nav-info">
+          </div>
+        </div>
       </div>
     );
   }
