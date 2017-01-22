@@ -1,3 +1,21 @@
+class FieldDisplay extends React.Component {
+  render() {
+    var labelDom;
+    if (typeof this.props.label !== 'undefined') {
+      labelDom = <div className="db-display-label" style={{float:'left', width:'100px'}}>{this.props.label}</div>
+    }
+    
+    return (
+      <div className="'db-display" style={{clear:'left'}}>
+        {labelDom}
+        <div>
+          {this.props.fieldDisplay}
+        </div>
+      </div>
+    );
+  }
+}
+
 class InputFieldDisplay extends React.Component {
   render() {
     var invalidMessageDom;
@@ -250,17 +268,6 @@ class TextInput extends React.Component {
   }
 }
 
-class DebugArgs extends React.Component {
-  render() {
-    return (
-      <div style={{clear:'left'}}>
-        <div style={{float:'left',width:'100px'}}>Debug Args</div>
-        <div><pre>{JSON.stringify(this.props.debugArgs,null,2)}</pre></div>
-      </div>
-    )
-  }
-}
-
 class DebugAssets extends React.Component {
   render() {
     return (
@@ -342,7 +349,7 @@ class DebugNav extends React.Component {
       debugArgs = {};
     }
     
-    debugArgs.refreshRate = debugArgs.refreshRate || 10;
+    debugArgs.refreshRate = typeof debugArgs.refreshRate !== undefined ? debugArgs.refreshRate : 10;
     if (!debugArgs.comments || Array !== debugArgs.comments.constructor) {
       debugArgs.comments = [
         'Test comment #1',
@@ -353,13 +360,16 @@ class DebugNav extends React.Component {
       ];
     }
 
-    this.state = debugArgs;
+    this.state = {
+      debugArgs: debugArgs,
+      repliedThreads: {},
+    };
   }
 
   setDebugArgs(key, value) {
-    var newState = this.state;
+    var newState = this.state.debugArgs;
     newState[key] = value;
-    this.setState(newState);
+    this.setState({debugArgs: newState});
     localStorage.setItem('douban-debug', JSON.stringify(newState));
   }
 
@@ -373,20 +383,31 @@ class DebugNav extends React.Component {
         <div className="panel-body">
           <div style={{clear:'right'}}>
             <div style={{float: 'right',width:'360px'}}>
-              <DebugArgs debugArgs={this.state} />
+              <FieldDisplay
+                label="Debug Args"
+                fieldDisplay={
+                  <pre>{JSON.stringify(this.state.debugArgs,null,2)}</pre>
+                }
+              />
+              <FieldDisplay
+                label="Replied Threads"
+                fieldDisplay={
+                  <pre>{JSON.stringify(this.state.repliedThreads,null,2)}</pre>
+                }
+              />
             </div>
             <div>
               <div style={{display:'inline-block'}}>
                 <TextInput 
                   label='Refresh Rate (sec)'
                   inputKey="refreshRate"
-                  value={this.state.refreshRate}
+                  value={this.state.debugArgs.refreshRate}
                   validate={(value) => {
                     if (isNaN(value) || (parseInt(value, 10) != value)) {
                       return 'Not an integer';
                     }
         
-                    if (value <= 0) {
+                    if (value < 0) {
                       return 'Not a positive integer'
                     }
                   }}
@@ -398,7 +419,7 @@ class DebugNav extends React.Component {
                 <ListInputField 
                   label="Comment List"
                   inputKey="comments"
-                  value={this.state.comments}
+                  value={this.state.debugArgs.comments}
                   defaultValue={'New comment'}
                   renderInputField={(value, onChange) => {
                     return (
@@ -426,12 +447,40 @@ class DebugNav extends React.Component {
               </div>
             </div>
           </div>
-          <DebugControl
-            onStart={() => {DoubanSofaUtils.startSofa();}}
-            onStop={() => {DoubanSofaUtils.stopSofa();}}
+          <FieldDisplay
+            label="Count Down"
+            fieldDisplay={
+              <div>{this.state.countdown ? this.state.countdown : 'N/A'}</div>
+            }
           />
-          <div id="debug-nav-info">
-          </div>
+          <DebugControl
+            onStart={() => {
+              DoubanSofaUtils.startSofa(
+                this.state.debugArgs, 
+                function(secLeft) {
+                  this.setState({countdown: secLeft});
+                }.bind(this), 
+                function(threadUrls){
+                  var repliedThreads = this.state.repliedThreads;
+                  
+                  for (var i = 0; i < threadUrls.length; i++) {
+                    var threadUrl = threadUrls[i];
+                    if (!repliedThreads[threadUrl]) {
+                      repliedThreads[threadUrl] = 0;
+                    }
+                    
+                    repliedThreads[threadUrl]++;
+                  }
+                  this.setState({
+                    repliedThreads: repliedThreads,
+                  });
+                }.bind(this)
+              )
+            }}
+            onStop={() => {DoubanSofaUtils.stopSofa(function() {
+                this.setState({countdown: null});
+              }.bind(this));}}
+          />
         </div>
       </div>
     );
